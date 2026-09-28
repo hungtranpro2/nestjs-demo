@@ -88,7 +88,24 @@ export class UsersService {
     }
   }
 
-  remove(id: number) {
+  async remove(id: string) {
+    // 1. Kiểm tra ID có đúng định dạng MongoDB ObjectId không
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException(`ID không hợp lệ: ${id}`);
+    }
+
+    // 2. Tìm và xóa bản ghi
+    const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
+
+    // 3. Nếu không tìm thấy user để xóa -> ném lỗi 404
+    if (!deletedUser) {
+      throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
+    }
+
+    return {
+      message: 'Xóa người dùng thành công',
+      deletedUser,
+    };
     return `This action removes a #${id} user`;
   }
 }
