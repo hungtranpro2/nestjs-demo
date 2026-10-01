@@ -10,5 +10,6 @@ import { User, UserSchema } from './schemas/user.schema.js';
   ],
   controllers: [UsersController],
   providers: [UsersService],
+  exports: [UsersService], // Export UsersService to make it available for injection in other modules
 })
 export class UsersModule {}

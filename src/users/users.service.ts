@@ -45,9 +45,30 @@ export class UsersService {
 
     const user = await this.userModel.findOne({ _id: id }).exec();
     if (!user) {
-      throw new BadRequestException(`User not found with ID: ${id}`);
+      throw new NotFoundException(`User not found with ID: ${id}`);
     }
     return user;
+  }
+
+  async findOneByEmail(email: string) {
+    const user = await this.userModel
+      .findOne({ email })
+      .select('+password')
+      .lean();
+
+    console.log(user);
+
+    if (!user) {
+      throw new NotFoundException(`User not found with email: ${email}`);
+    }
+    return user;
+  }
+
+  async isValidPassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
+    return bcrypt.compare(password, hashedPassword);
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
@@ -106,6 +127,5 @@ export class UsersService {
       message: 'Xóa người dùng thành công',
       deletedUser,
     };
-    return `This action removes a #${id} user`;
   }
 }
