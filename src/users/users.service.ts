@@ -9,12 +9,16 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './schemas/user.schema.js';
-import { isValidObjectId, Model } from 'mongoose';
+import { isValidObjectId } from 'mongoose';
 import bcrypt from 'bcrypt';
+import type { SoftDeleteModel } from '../common/plugins/soft-delete.plugin.js';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(
+    @InjectModel(User.name)
+    private userModel: SoftDeleteModel<User>,
+  ) {}
 
   async hashPassword(password: string): Promise<string> {
     // Implement your password hashing logic here
@@ -26,16 +30,39 @@ export class UsersService {
   }
 
   async create(createUserDto: CreateUserDto) {
+    const existingUser = await this.userModel
+      .findOne({ email: createUserDto.email })
+      .select('_id')
+      .lean();
+
+    if (existingUser) {
+      throw new ConflictException(
+        `Email ${createUserDto.email} đã tồn tại trong hệ thống.`,
+      );
+    }
+
     const hashedPassword = await this.hashPassword(createUserDto.password);
     const userWithHashedPassword = {
       ...createUserDto,
       password: hashedPassword,
     };
-    return this.userModel.create(userWithHashedPassword);
+
+    try {
+      return await this.userModel.create(userWithHashedPassword);
+    } catch (error: any) {
+      // Unique index vẫn cần được xử lý vì hai request có thể chạy đồng thời.
+      if (error.code === 11000) {
+        throw new ConflictException(
+          `Email ${createUserDto.email} đã tồn tại trong hệ thống.`,
+        );
+      }
+
+      throw error;
+    }
   }
 
   findAll() {
-    return `This action returns all users`;
+    return this.userModel.find().exec();
   }
 
   async findOne(id: string) {
@@ -74,7 +101,7 @@ export class UsersService {
   async update(id: string, updateUserDto: UpdateUserDto) {
     try {
       const updatedUser = await this.userModel
-        .findByIdAndUpdate(id, updateUserDto, {
+        .findOneAndUpdate({ _id: id }, updateUserDto, {
           new: true,
           runValidators: true,
         })
@@ -116,7 +143,7 @@ export class UsersService {
     }
 
     // 2. Tìm và xóa bản ghi
-    const deletedUser = await this.userModel.findByIdAndDelete(id).exec();
+    const deletedUser = await this.userModel.softDeleteById(id);
 
     // 3. Nếu không tìm thấy user để xóa -> ném lỗi 404
     if (!deletedUser) {
@@ -126,6 +153,25 @@ export class UsersService {
     return {
       message: 'Xóa người dùng thành công',
       deletedUser,
+    };
+  }
+
+  async restore(id: string) {
+    if (!isValidObjectId(id)) {
+      throw new BadRequestException(`ID không hợp lệ: ${id}`);
+    }
+
+    const restoredUser = await this.userModel.restoreById(id);
+
+    if (!restoredUser) {
+      throw new NotFoundException(
+        `Không tìm thấy người dùng đã xóa với ID: ${id}`,
+      );
+    }
+
+    return {
+      message: 'Khôi phục người dùng thành công',
+      restoredUser,
     };
   }
 }

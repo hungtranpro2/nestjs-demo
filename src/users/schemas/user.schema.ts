@@ -1,10 +1,14 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import {
+  softDeletePlugin,
+  type SoftDeletable,
+} from '../../common/plugins/soft-delete.plugin.js';
 
 export type UserDocument = HydratedDocument<User>;
 
-@Schema()
-export class User {
+@Schema({ timestamps: true })
+export class User implements SoftDeletable {
   @Prop({ required: true, unique: true })
   email!: string;
 
@@ -23,6 +27,10 @@ export class User {
   @Prop()
   address!: string;
 
+  isDeleted!: boolean;
+
+  deletedAt?: Date | null;
+
   @Prop()
   createdAt!: Date;
 
@@ -31,3 +39,5 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.plugin(softDeletePlugin);
