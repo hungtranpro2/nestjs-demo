@@ -27,6 +27,9 @@ export class User implements SoftDeletable {
   @Prop()
   address!: string;
 
+  @Prop()
+  role!: string;
+
   isDeleted!: boolean;
 
   deletedAt?: Date | null;

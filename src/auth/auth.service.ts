@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service.js';
 import { User } from '../users/schemas/user.schema.js';
 import { JwtService } from '@nestjs/jwt';
+import { IUser } from '../users/user.interface.js';
 
 @Injectable()
 export class AuthService {
@@ -32,11 +33,23 @@ export class AuthService {
     return null;
   }
 
-  login(user: Omit<User, 'password'>) {
+  login(user: IUser) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const payload = { username: user.email, sub: user.name };
+    const { _id, name, email, role } = user;
+    const payload = {
+      name,
+      sub: 'token login',
+      role,
+      email,
+      _id,
+      iss: 'from server',
+    };
     return {
       access_token: this.jwtService.sign(payload),
+      _id,
+      name,
+      email,
+      role,
     };
   }
 }
