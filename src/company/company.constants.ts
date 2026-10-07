@@ -16,3 +16,13 @@ export const COMPANY_SORT_FIELDS: Record<CompanySortBy, keyof Company> = {
   [CompanySortBy.CREATED_AT]: 'createdAt',
   [CompanySortBy.UPDATED_AT]: 'updatedAt',
 };
+
+export const COMPANY_PUBLIC_FIELDS = {
+  _id: 1,
+  name: 1,
+  status: 1,
+  address: 1,
+  description: 1,
+  createdAt: 1,
+  updatedAt: 1,
+} as const;

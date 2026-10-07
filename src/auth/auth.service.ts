@@ -1,6 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { UsersService } from '../users/users.service.js';
-import { User } from '../users/schemas/user.schema.js';
 import { JwtService } from '@nestjs/jwt';
 import { IUser } from '../users/user.interface.js';
 
@@ -11,11 +10,15 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateUser(
-    email: string,
-    pass: string,
-  ): Promise<null | Omit<User, 'password'>> {
-    const user = await this.usersService.findOneByEmail(email);
+  async validateUser(email: string, pass: string): Promise<IUser | null> {
+    const user = await this.usersService
+      .findOneByEmail(email)
+      .catch((error: unknown) => {
+        if (error instanceof NotFoundException) {
+          return null;
+        }
+        throw error;
+      });
 
     if (!user) {
       return null;
@@ -27,14 +30,17 @@ export class AuthService {
     );
 
     if (isPasswordValid) {
-      const { password, ...result } = user;
-      return result;
+      return {
+        _id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      };
     }
     return null;
   }
 
   login(user: IUser) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { _id, name, email, role } = user;
     const payload = {
       name,

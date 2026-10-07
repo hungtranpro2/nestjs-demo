@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
 import { LocalAuthGuard } from './local-auth.guard.js';
 import { AuthService } from './auth.service.js';
-import { User } from '../users/schemas/user.schema.js';
 import { Public } from '../decorator/customize.js';
-import { IUser } from '../users/user.interface.js';
+import type { IUser } from '../users/user.interface.js';
+import { ResponseMessage } from '../common/decorators/response-message.decorator.js';
 
 @Controller('auth')
 export class AuthController {
@@ -12,14 +12,14 @@ export class AuthController {
   @Public()
   @UseGuards(LocalAuthGuard)
   @Post('/login')
-  handleLogin(@Request() req): any {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    return this.authService.login(req?.user as IUser); // Call the login method from AuthService to generate a JWT token
+  @ResponseMessage('Logged in successfully')
+  handleLogin(@Request() req: { user: IUser }) {
+    return this.authService.login(req.user);
   }
 
   @Get('profile')
+  @ResponseMessage('Profile retrieved successfully')
   getProfile(@Request() req: { user: IUser }) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
     return req.user;
   }
 }

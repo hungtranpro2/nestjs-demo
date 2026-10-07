@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { InjectModel } from '@nestjs/mongoose';
@@ -7,13 +11,14 @@ import { Company } from './schemas/company.schema.js';
 import { IUser } from '../users/user.interface.js';
 import { Types, type QueryFilter } from 'mongoose';
 import { GetCompaniesQueryDto } from './dto/get-companies-query.dto.js';
-import type {
-  CompanyListRecord,
-  CompanyResponse,
-} from './dto/company-response.dto.js';
-import { COMPANY_SORT_FIELDS } from './company.constants.js';
+import type { CompanyListRecord } from './dto/company-response.dto.js';
+import {
+  COMPANY_PUBLIC_FIELDS,
+  COMPANY_SORT_FIELDS,
+} from './company.constants.js';
+import { toPublicCompany } from './company.mapper.js';
 import { SortOrder } from '../common/dto/pagination-query.dto.js';
-import type { PaginatedResponse } from '../common/interfaces/paginated-response.interface.js';
+import type { PaginatedResult } from '../common/interfaces/paginated-result.interface.js';
 import {
   getPaginationOffset,
   paginate,
@@ -28,19 +33,19 @@ export class CompanyService {
   ) {}
 
   async create(createCompanyDto: CreateCompanyDto, user: IUser) {
-    // Implement the logic to create a new company using the provided DTO
-    return await this.companyModel.create({
+    const company = await this.companyModel.create({
       ...createCompanyDto,
       createdBy: {
         _id: new Types.ObjectId(user._id),
         email: user.email,
       },
     });
+    return toPublicCompany(company);
   }
 
   async findAll(
     query: GetCompaniesQueryDto,
-  ): Promise<PaginatedResponse<CompanyResponse>> {
+  ): Promise<PaginatedResult<CompanyListRecord>> {
     const {
       page,
       limit,
@@ -95,33 +100,27 @@ export class CompanyService {
         .sort({ [sortField]: sortDirection, _id: sortDirection })
         .skip(skip)
         .limit(limit)
-        .select({
-          _id: 1,
-          name: 1,
-          status: 1,
-          address: 1,
-          description: 1,
-          createdAt: 1,
-          updatedAt: 1,
-        })
+        .select(COMPANY_PUBLIC_FIELDS)
         .lean<CompanyListRecord[]>()
         .exec(),
       this.companyModel.countDocuments(filter).exec(),
     ]);
-    const data: CompanyResponse[] = companies.map((company) => ({
-      _id: company._id.toString(),
-      name: company.name,
-      status: company.status,
-      address: company.address,
-      description: company.description,
-      createdAt: company.createdAt,
-      updatedAt: company.updatedAt,
-    }));
-    return paginate(data, totalItems, page, limit);
+    return paginate(companies, totalItems, page, limit);
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} company`;
+  async findOne(id: string) {
+    const company = await this.companyModel
+      .findOne({ _id: id })
+      .select(COMPANY_PUBLIC_FIELDS)
+      .lean<CompanyListRecord>()
+      .exec();
+    if (!company) {
+      throw new NotFoundException({
+        message: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+    }
+    return company;
   }
 
   async update(id: string, updateCompanyDto: UpdateCompanyDto, user: IUser) {
@@ -133,12 +132,20 @@ export class CompanyService {
           updatedBy: { _id: new Types.ObjectId(user._id), email: user.email },
         },
         {
-          new: true,
+          returnDocument: 'after',
           runValidators: true,
         },
       )
+      .select(COMPANY_PUBLIC_FIELDS)
+      .lean<CompanyListRecord>()
       .exec();
 
+    if (!updatedCompany) {
+      throw new NotFoundException({
+        message: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+    }
     return updatedCompany;
   }
 
@@ -151,10 +158,18 @@ export class CompanyService {
           deletedAt: new Date(),
           deletedBy: { _id: new Types.ObjectId(user._id), email: user.email },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
+      .select('_id')
+      .lean()
       .exec();
 
-    return deletedCompany;
+    if (!deletedCompany) {
+      throw new NotFoundException({
+        message: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+    }
+    return null;
   }
 }

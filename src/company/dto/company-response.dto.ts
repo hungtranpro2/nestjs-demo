@@ -6,4 +6,4 @@ export type CompanyListRecord = Pick<
   'name' | 'status' | 'address' | 'description' | 'createdAt' | 'updatedAt'
 > & { _id: Types.ObjectId };
 
-export type CompanyResponse = Omit<CompanyListRecord, '_id'> & { _id: string };
+export type CompanyResponse = Omit<CompanyListRecord, '_id'> & { id: string };

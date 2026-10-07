@@ -10,38 +10,49 @@ import {
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { ResponseMessage } from '../common/decorators/response-message.decorator.js';
+import { MongoIdPipe } from '../common/pipes/mongo-id.pipe.js';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @ResponseMessage('User created successfully')
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get()
+  @ResponseMessage('Users retrieved successfully')
   findAll() {
     return this.usersService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  @ResponseMessage('User retrieved successfully')
+  findOne(@Param('id', new MongoIdPipe('user')) id: string) {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  @ResponseMessage('User updated successfully')
+  update(
+    @Param('id', new MongoIdPipe('user')) id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
     return this.usersService.update(id, updateUserDto);
   }
 
   @Patch(':id/restore')
-  restore(@Param('id') id: string) {
+  @ResponseMessage('User restored successfully')
+  restore(@Param('id', new MongoIdPipe('user')) id: string) {
     return this.usersService.restore(id);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  @ResponseMessage('User deleted successfully')
+  remove(@Param('id', new MongoIdPipe('user')) id: string) {
     return this.usersService.remove(id);
   }
 }

@@ -36,9 +36,11 @@ AND. Sorting always adds `_id` as a tie-breaker in the requested direction.
 
 ```json
 {
-  "result": [
+  "success": true,
+  "message": "Companies retrieved successfully",
+  "data": [
     {
-      "_id": "68ce58300000000000000001",
+      "id": "68ce58300000000000000001",
       "name": "DHL Express",
       "status": "ACTIVE",
       "address": "Hanoi",
@@ -48,23 +50,27 @@ AND. Sorting always adds `_id` as a tie-breaker in the requested direction.
     }
   ],
   "meta": {
-    "current": 1,
-    "pageSize": 10,
-    "total": 1,
-    "pages": 1,
+    "page": 1,
+    "limit": 10,
+    "totalItems": 1,
+    "totalPages": 1,
     "hasNextPage": false,
     "hasPreviousPage": false
   }
 }
 ```
 
-`_id` remains the public identifier, serialized as a string. Only the public fields
+`id` is the public identifier, serialized as a string. Only the public fields
 above are selected; audit fields, deletion fields, and `__v` are excluded.
-The common pagination response uses `result` and
-`current/pageSize/total/pages` to match the frontend contract. Requests still use
-`page` and `limit` as query parameters.
+The global standard uses `success/message/data/meta`, with metadata names
+`page/limit/totalItems/totalPages`. This replaces the previous frontend contract
+`result` and `current/pageSize/total/pages`. Requests still use `page` and `limit`.
 
-No matches return HTTP `200`, `result: []`, zero totals, and both navigation flags
+The service returns raw `{ items, meta }`; the interceptor serializes the items and
+builds the envelope without nesting `items/meta` inside `data`. See
+[`common/README.md`](../common/README.md) for the project-wide response contract.
+
+No matches return HTTP `200`, `data: []`, zero totals, and both navigation flags
 `false`. A page beyond the last page returns empty data and preserves the requested
 page. `hasNextPage` is `false`; `hasPreviousPage` is `true` when the result set has
 pages and the requested page exceeds `1`.
@@ -106,8 +112,29 @@ when needed.
 4. Call `getPaginationOffset(page, limit)`, then execute the sorted, projected,
    lean query and matching count with `Promise.all()`.
 5. Map public fields and return `paginate(data, totalItems, page, limit)` with
-   `PaginatedResponse<ResponseDto>` as the return type.
+   `PaginatedResult<BusinessRecord>` as the service return type.
 
-`PaginationMeta`, `PaginatedResponse<T>`, `SortOrder`, `paginate()`,
+`PaginationMeta`, `PaginatedResult<T>`, `SortOrder`, `paginate()`,
 `getPaginationOffset()`, and `escapeRegex()` live in `common`. No base CRUD service
-is needed. Other list APIs have not been changed by this implementation.
+is needed. Decorate controller methods with `@ResponseMessage()`; do not wrap data
+in the service. Other APIs also receive the global success/error envelopes.
+
+## Company CRUD reference
+
+| Endpoint                | Success status | Message                          | Data                        |
+| ----------------------- | -------------- | -------------------------------- | --------------------------- |
+| `GET /companies`        | `200`          | Companies retrieved successfully | Array, with pagination meta |
+| `GET /companies/:id`    | `200`          | Company retrieved successfully   | Company public fields       |
+| `POST /companies`       | `201`          | Company created successfully     | Company public fields       |
+| `PATCH /companies/:id`  | `200`          | Company updated successfully     | Company public fields       |
+| `DELETE /companies/:id` | `200`          | Company deleted successfully     | `null`                      |
+
+Detail, update, and delete validate ObjectIds and return `INVALID_COMPANY_ID` with
+HTTP `400` for invalid identifiers. Valid identifiers without an active document
+return `COMPANY_NOT_FOUND` with HTTP `404`. Deletion uses the existing soft-delete
+mechanism and records the authenticated actor.
+
+Create/update accept `name`, `address`, `description`, and optional `status`;
+`code` and `email` are not Company fields. All CRUD responses use the same public
+projection/mapper, hiding actor/deletion fields. Identifier conversion and HTTP
+envelopes are handled centrally.

@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -36,9 +35,10 @@ export class UsersService {
       .lean();
 
     if (existingUser) {
-      throw new ConflictException(
-        `Email ${createUserDto.email} đã tồn tại trong hệ thống.`,
-      );
+      throw new ConflictException({
+        message: 'User email already exists',
+        code: 'USER_EMAIL_ALREADY_EXISTS',
+      });
     }
 
     const hashedPassword = await this.hashPassword(createUserDto.password);
@@ -47,18 +47,7 @@ export class UsersService {
       password: hashedPassword,
     };
 
-    try {
-      return await this.userModel.create(userWithHashedPassword);
-    } catch (error: any) {
-      // Unique index vẫn cần được xử lý vì hai request có thể chạy đồng thời.
-      if (error.code === 11000) {
-        throw new ConflictException(
-          `Email ${createUserDto.email} đã tồn tại trong hệ thống.`,
-        );
-      }
-
-      throw error;
-    }
+    return this.userModel.create(userWithHashedPassword);
   }
 
   findAll() {
@@ -83,8 +72,6 @@ export class UsersService {
       .select('+password')
       .lean();
 
-    console.log(user);
-
     if (!user) {
       throw new NotFoundException(`User not found with email: ${email}`);
     }
@@ -99,41 +86,19 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto) {
-    try {
-      const updatedUser = await this.userModel
-        .findOneAndUpdate({ _id: id }, updateUserDto, {
-          new: true,
-          runValidators: true,
-        })
-        .exec();
-
-      if (!updatedUser) {
-        throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
-      }
-
-      return updatedUser;
-    } catch (error: any) {
-      // 1. Bắt mã lỗi trùng lặp duy nhất E11000 từ MongoDB Driver
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (error.code === 11000) {
-        const duplicateField =
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
-          Object.keys(error.keyPattern || {})[0] || 'Dữ liệu';
-        throw new ConflictException(
-          `${duplicateField} này đã tồn tại trong hệ thống.`,
-        );
-      }
-
-      // 2. Ném tiếp các Exception chuẩn của NestJS (như NotFoundException ở trên)
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      // 3. Các lỗi ngoại lệ ngoài ý muốn khác
-      throw new InternalServerErrorException(
-        'Đã xảy ra lỗi khi cập nhật dữ liệu.',
-      );
+    const updatedUser = await this.userModel
+      .findOneAndUpdate({ _id: id }, updateUserDto, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
+      .exec();
+    if (!updatedUser) {
+      throw new NotFoundException({
+        message: 'User not found',
+        code: 'USER_NOT_FOUND',
+      });
     }
+    return updatedUser;
   }
 
   async remove(id: string) {
@@ -150,10 +115,7 @@ export class UsersService {
       throw new NotFoundException(`Không tìm thấy người dùng với ID: ${id}`);
     }
 
-    return {
-      message: 'Xóa người dùng thành công',
-      deletedUser,
-    };
+    return null;
   }
 
   async restore(id: string) {
@@ -169,9 +131,6 @@ export class UsersService {
       );
     }
 
-    return {
-      message: 'Khôi phục người dùng thành công',
-      restoredUser,
-    };
+    return restoredUser;
   }
 }

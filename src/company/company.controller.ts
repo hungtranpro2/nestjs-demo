@@ -14,29 +14,35 @@ import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import type { IUser } from '../users/user.interface.js';
 import { User } from '../decorator/customize.js';
 import { GetCompaniesQueryDto } from './dto/get-companies-query.dto.js';
+import { ResponseMessage } from '../common/decorators/response-message.decorator.js';
+import { MongoIdPipe } from '../common/pipes/mongo-id.pipe.js';
 
 @Controller('companies')
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
   @Post()
+  @ResponseMessage('Company created successfully')
   create(@Body() createCompanyDto: CreateCompanyDto, @User() user: IUser) {
     return this.companyService.create(createCompanyDto, user);
   }
 
   @Get()
+  @ResponseMessage('Companies retrieved successfully')
   findAll(@Query() query: GetCompaniesQueryDto) {
     return this.companyService.findAll(query);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.companyService.findOne(+id);
+  @ResponseMessage('Company retrieved successfully')
+  findOne(@Param('id', new MongoIdPipe('company')) id: string) {
+    return this.companyService.findOne(id);
   }
 
   @Patch(':id')
+  @ResponseMessage('Company updated successfully')
   update(
-    @Param('id') id: string,
+    @Param('id', new MongoIdPipe('company')) id: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
     @User() user: IUser,
   ) {
@@ -44,7 +50,11 @@ export class CompanyController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @User() user: IUser) {
+  @ResponseMessage('Company deleted successfully')
+  remove(
+    @Param('id', new MongoIdPipe('company')) id: string,
+    @User() user: IUser,
+  ) {
     return this.companyService.remove(id, user);
   }
 }
