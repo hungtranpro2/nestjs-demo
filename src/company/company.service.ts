@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,12 +26,16 @@ import {
   paginate,
 } from '../common/utils/pagination.util.js';
 import { escapeRegex } from '../common/utils/regex.util.js';
+import { StoredUpload } from '@nestjs/storage';
+import { toFileAsset } from './utils/company-file.util.js';
+import { StorageService } from '../storage/storage.service.js';
 
 @Injectable()
 export class CompanyService {
   constructor(
     @InjectModel(Company.name)
     private readonly companyModel: SoftDeleteModel<Company>,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(createCompanyDto: CreateCompanyDto, user: IUser) {
@@ -171,5 +177,181 @@ export class CompanyService {
       });
     }
     return null;
+  }
+
+  async createLogo(companyId: string, file: StoredUpload) {
+    const logo = toFileAsset(file);
+
+    let company;
+
+    try {
+      company = await this.companyModel
+        .findOneAndUpdate(
+          {
+            _id: companyId,
+
+            $or: [
+              {
+                logo: {
+                  $exists: false,
+                },
+              },
+              {
+                logo: null,
+              },
+            ],
+          },
+
+          {
+            $set: {
+              logo,
+            },
+          },
+
+          {
+            new: true,
+          },
+        )
+        .lean()
+        .exec();
+    } catch (error) {
+      await this.storageService.safeDelete(file.key);
+
+      throw error;
+    }
+
+    if (company) {
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        id: company._id.toString(),
+
+        logo,
+      };
+    }
+
+    // Update không xảy ra:
+    // company không tồn tại HOẶC
+    // company đã có logo.
+
+    await this.storageService.safeDelete(file.key);
+
+    const companyExists = await this.companyModel.exists({
+      _id: companyId,
+    });
+
+    if (!companyExists) {
+      throw new NotFoundException({
+        message: 'Company not found',
+
+        code: 'COMPANY_NOT_FOUND',
+      });
+    }
+
+    throw new ConflictException({
+      message: 'Company already has a logo',
+
+      code: 'COMPANY_LOGO_ALREADY_EXISTS',
+    });
+  }
+
+  async replaceLogo(companyId: string, file: StoredUpload) {
+    const newLogo = toFileAsset(file);
+
+    let previousCompany;
+
+    try {
+      previousCompany = await this.companyModel
+        .findByIdAndUpdate(
+          companyId,
+
+          {
+            $set: {
+              logo: newLogo,
+            },
+          },
+
+          {
+            new: false,
+          },
+        )
+        .lean()
+        .exec();
+    } catch (error) {
+      await this.storageService.safeDelete(file.key);
+
+      throw error;
+    }
+
+    if (!previousCompany) {
+      await this.storageService.safeDelete(file.key);
+
+      throw new NotFoundException({
+        message: 'Company not found',
+
+        code: 'COMPANY_NOT_FOUND',
+      });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const previousLogoKey = previousCompany.logo?.key;
+
+    if (previousLogoKey && previousLogoKey !== file.key) {
+      await this.storageService.safeDelete(previousLogoKey);
+    }
+
+    return {
+      id: companyId,
+      logo: newLogo,
+    };
+  }
+
+  async addDocuments(companyId: string, files: StoredUpload[]) {
+    const documents = files.map(toFileAsset);
+
+    const keys = files.map((file) => file.key);
+
+    let company;
+
+    try {
+      company = await this.companyModel
+        .findByIdAndUpdate(
+          companyId,
+
+          {
+            $push: {
+              documents: {
+                $each: documents,
+              },
+            },
+          },
+
+          {
+            new: true,
+          },
+        )
+        .lean()
+        .exec();
+    } catch (error) {
+      await this.storageService.safeDeleteMany(keys);
+
+      throw error;
+    }
+
+    if (!company) {
+      await this.storageService.safeDeleteMany(keys);
+
+      throw new NotFoundException({
+        message: 'Company not found',
+
+        code: 'COMPANY_NOT_FOUND',
+      });
+    }
+
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      id: company._id.toString(),
+
+      documents,
+    };
   }
 }

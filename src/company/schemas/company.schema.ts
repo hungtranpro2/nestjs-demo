@@ -5,6 +5,10 @@ import {
   softDeletePlugin,
   type SoftDeletable,
 } from '../../common/plugins/soft-delete.plugin.js';
+import {
+  FileAsset,
+  FileAssetSchema,
+} from '../../uploads/schemas/file-asset.schema.js';
 
 export type CompanyDocument = HydratedDocument<Company>;
 
@@ -12,6 +16,18 @@ export type CompanyDocument = HydratedDocument<Company>;
 export class Company implements SoftDeletable {
   @Prop()
   name!: string;
+
+  @Prop({
+    type: FileAssetSchema,
+    required: false,
+  })
+  logo?: FileAsset;
+
+  @Prop({
+    type: [FileAssetSchema],
+    default: [],
+  })
+  documents?: FileAsset[];
 
   @Prop({ type: String, enum: CompanyStatus, default: CompanyStatus.ACTIVE })
   status?: CompanyStatus;

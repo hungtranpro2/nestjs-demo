@@ -10,6 +10,8 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard.js';
 import { CompanyModule } from './company/company.module.js';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor.js';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
+import { AppStorageModule } from './storage/storage.module.js';
+import { UploadsModule } from './uploads/uploads.module.js';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
     UsersModule,
     AuthModule,
     CompanyModule,
+    AppStorageModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [
