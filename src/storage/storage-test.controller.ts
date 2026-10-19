@@ -16,4 +16,11 @@ export class StorageTestController {
       objectExists: exists,
     };
   }
+
+  @Get('public-url')
+  publicUrl() {
+    return {
+      url: this.storageService.getPublicUrl('companies/logos/test.png'),
+    };
+  }
 }

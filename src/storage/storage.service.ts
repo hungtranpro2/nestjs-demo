@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { InjectDisk, StorageDisk } from '@nestjs/storage';
 import { R2_DISK } from './storage.constants.js';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class StorageService {
@@ -10,7 +11,15 @@ export class StorageService {
   constructor(
     @InjectDisk(R2_DISK)
     private readonly storage: StorageDisk,
+
+    private readonly configService: ConfigService,
   ) {}
+
+  getPublicUrl(key: string): string {
+    const baseUrl = this.configService.getOrThrow<string>('R2_PUBLIC_URL');
+
+    return `${baseUrl.replace(/\/$/, '')}/${key}`;
+  }
 
   exists(key: string): Promise<boolean> {
     return this.storage.exists(key);

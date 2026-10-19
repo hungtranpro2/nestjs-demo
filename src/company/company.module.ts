@@ -4,6 +4,7 @@ import { CompanyController } from './company.controller.js';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Company, CompanySchema } from './schemas/company.schema.js';
 import { AppStorageModule } from '../storage/storage.module.js';
+import { CompanyWriteGuard } from './guards/company-write.guard.js';
 
 @Module({
   imports: [
@@ -11,6 +12,6 @@ import { AppStorageModule } from '../storage/storage.module.js';
     AppStorageModule,
   ],
   controllers: [CompanyController],
-  providers: [CompanyService],
+  providers: [CompanyService, CompanyWriteGuard],
 })
 export class CompanyModule {}

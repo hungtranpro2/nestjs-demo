@@ -13,12 +13,23 @@ import { Company } from './schemas/company.schema.js';
 import { IUser } from '../users/user.interface.js';
 import { Types, type QueryFilter } from 'mongoose';
 import { GetCompaniesQueryDto } from './dto/get-companies-query.dto.js';
-import type { CompanyListRecord } from './dto/company-response.dto.js';
+import type {
+  CompanyListRecord,
+  CompanyDetailRecord,
+  CompanyListItemRecord,
+  CompanyListItemResponse,
+} from './dto/company-response.dto.js';
 import {
+  COMPANY_DETAIL_FIELDS,
+  COMPANY_LIST_FIELDS,
   COMPANY_PUBLIC_FIELDS,
   COMPANY_SORT_FIELDS,
 } from './company.constants.js';
-import { toPublicCompany } from './company.mapper.js';
+import {
+  toCompanyDetail,
+  toCompanyListItem,
+  toPublicCompany,
+} from './company.mapper.js';
 import { SortOrder } from '../common/dto/pagination-query.dto.js';
 import type { PaginatedResult } from '../common/interfaces/paginated-result.interface.js';
 import {
@@ -51,7 +62,7 @@ export class CompanyService {
 
   async findAll(
     query: GetCompaniesQueryDto,
-  ): Promise<PaginatedResult<CompanyListRecord>> {
+  ): Promise<PaginatedResult<CompanyListItemResponse>> {
     const {
       page,
       limit,
@@ -99,34 +110,59 @@ export class CompanyService {
     }
 
     const sortField = COMPANY_SORT_FIELDS[sortBy];
+
     const sortDirection = sortOrder === SortOrder.ASC ? 1 : -1;
+
     const [companies, totalItems] = await Promise.all([
       this.companyModel
         .find(filter)
-        .sort({ [sortField]: sortDirection, _id: sortDirection })
+        .sort({
+          [sortField]: sortDirection,
+
+          _id: sortDirection,
+        })
         .skip(skip)
         .limit(limit)
-        .select(COMPANY_PUBLIC_FIELDS)
-        .lean<CompanyListRecord[]>()
+        .select(COMPANY_LIST_FIELDS)
+        .lean<CompanyListItemRecord[]>()
         .exec(),
+
       this.companyModel.countDocuments(filter).exec(),
     ]);
-    return paginate(companies, totalItems, page, limit);
+
+    const items = companies.map((company) => {
+      const logoUrl = company.logo
+        ? this.storageService.getPublicUrl(company.logo.key)
+        : null;
+
+      return toCompanyListItem(company, logoUrl);
+    });
+
+    return paginate(items, totalItems, page, limit);
   }
 
   async findOne(id: string) {
     const company = await this.companyModel
-      .findOne({ _id: id })
-      .select(COMPANY_PUBLIC_FIELDS)
-      .lean<CompanyListRecord>()
+      .findOne({
+        _id: id,
+      })
+      .select(COMPANY_DETAIL_FIELDS)
+      .lean<CompanyDetailRecord>()
       .exec();
+
     if (!company) {
       throw new NotFoundException({
         message: 'Company not found',
+
         code: 'COMPANY_NOT_FOUND',
       });
     }
-    return company;
+
+    const logoUrl = company.logo
+      ? this.storageService.getPublicUrl(company.logo.key)
+      : null;
+
+    return toCompanyDetail(company, logoUrl);
   }
 
   async update(id: string, updateCompanyDto: UpdateCompanyDto, user: IUser) {
@@ -353,5 +389,116 @@ export class CompanyService {
 
       documents,
     };
+  }
+
+  async removeLogo(companyId: string): Promise<null> {
+    const previousCompany = await this.companyModel
+      .findOneAndUpdate(
+        {
+          _id: companyId,
+          'logo.key': {
+            $exists: true,
+          },
+        },
+
+        {
+          $unset: {
+            logo: 1,
+          },
+        },
+
+        {
+          returnDocument: 'before',
+        },
+      )
+      .select({
+        _id: 1,
+        logo: 1,
+      })
+      .lean()
+      .exec();
+
+    if (!previousCompany) {
+      const companyExists = await this.companyModel.exists({
+        _id: companyId,
+      });
+
+      if (!companyExists) {
+        throw new NotFoundException({
+          message: 'Company not found',
+
+          code: 'COMPANY_NOT_FOUND',
+        });
+      }
+
+      // Company tồn tại,
+      // nhưng không có logo.
+      // DELETE được coi là idempotent.
+      return null;
+    }
+
+    const logoKey = previousCompany.logo?.key;
+
+    await this.storageService.safeDelete(logoKey);
+
+    return null;
+  }
+
+  async removeDocument(companyId: string, documentId: string): Promise<null> {
+    const previousCompany = await this.companyModel
+      .findOneAndUpdate(
+        {
+          _id: companyId,
+
+          'documents.id': documentId,
+        },
+
+        {
+          $pull: {
+            documents: {
+              id: documentId,
+            },
+          },
+        },
+
+        {
+          returnDocument: 'before',
+        },
+      )
+      .select({
+        _id: 1,
+        documents: 1,
+      })
+      .lean()
+      .exec();
+
+    if (!previousCompany) {
+      const companyExists = await this.companyModel.exists({
+        _id: companyId,
+      });
+
+      if (!companyExists) {
+        throw new NotFoundException({
+          message: 'Company not found',
+
+          code: 'COMPANY_NOT_FOUND',
+        });
+      }
+
+      // Company tồn tại,
+      // document không tồn tại.
+      // Giữ DELETE idempotent.
+      return null;
+    }
+
+    const document = previousCompany.documents?.find(
+      (item) => item.id === documentId,
+    );
+
+    if (document?.key) {
+      await this.storageService.safeDelete(document.key);
+    }
+
+    return null;
   }
 }

@@ -26,3 +26,12 @@ export const COMPANY_PUBLIC_FIELDS = {
   createdAt: 1,
   updatedAt: 1,
 } as const;
+
+export const COMPANY_LIST_FIELDS = {
+  ...COMPANY_PUBLIC_FIELDS,
+  logo: 1,
+} as const;
+
+export const COMPANY_DETAIL_FIELDS = {
+  ...COMPANY_LIST_FIELDS,
+} as const;

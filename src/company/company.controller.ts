@@ -11,6 +11,7 @@ import {
   UploadedFile,
   BadRequestException,
   UploadedFiles,
+  UseGuards,
 } from '@nestjs/common';
 import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
@@ -36,6 +37,7 @@ import {
   generateCompanyDocumentKey,
   generateCompanyLogoKey,
 } from './utils/company-upload-key.util.js';
+import { CompanyWriteGuard } from './guards/company-write.guard.js';
 
 @Controller('companies')
 export class CompanyController {
@@ -80,6 +82,7 @@ export class CompanyController {
 
   @Post(':id/logo')
   @ResponseMessage('Company logo uploaded successfully')
+  @UseGuards(CompanyWriteGuard)
   @UseInterceptors(
     FileInterceptor(COMPANY_LOGO_FIELD, {
       storage: uploadToDisk({
@@ -113,6 +116,7 @@ export class CompanyController {
 
   @Patch(':id/logo')
   @ResponseMessage('Company logo updated successfully')
+  @UseGuards(CompanyWriteGuard)
   @UseInterceptors(
     FileInterceptor(COMPANY_LOGO_FIELD, {
       storage: uploadToDisk({
@@ -146,6 +150,7 @@ export class CompanyController {
 
   @Post(':id/documents')
   @ResponseMessage('Company documents uploaded successfully')
+  @UseGuards(CompanyWriteGuard)
   @UseInterceptors(
     FilesInterceptor(
       COMPANY_DOCUMENT_FIELD,
@@ -181,5 +186,28 @@ export class CompanyController {
     }
 
     return this.companyService.addDocuments(companyId, files);
+  }
+
+  @Delete(':id/logo')
+  @ResponseMessage('Company logo deleted successfully')
+  @UseGuards(CompanyWriteGuard)
+  removeLogo(
+    @Param('id')
+    companyId: string,
+  ) {
+    return this.companyService.removeLogo(companyId);
+  }
+
+  @Delete(':id/documents/:documentId')
+  @ResponseMessage('Company document deleted successfully')
+  @UseGuards(CompanyWriteGuard)
+  removeDocument(
+    @Param('id')
+    companyId: string,
+
+    @Param('documentId')
+    documentId: string,
+  ) {
+    return this.companyService.removeDocument(companyId, documentId);
   }
 }
