@@ -36,7 +36,8 @@ describe('Company API mappers', () => {
     expect(data.documents).toHaveLength(1);
     expect(data.documents[0].id).toBe('doc-1');
     expect(JSON.stringify(data)).not.toContain('companies/documents/private.pdf');
-    expect(JSON.stringify(data)).not.toContain('companies/logos/test.png"');
+    expect(data.logo).not.toHaveProperty('key');
+    expect(data.documents[0]).not.toHaveProperty('key');
   });
 
   it('omits private documents from list records', () => {

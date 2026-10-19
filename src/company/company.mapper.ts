@@ -1,7 +1,10 @@
+import type { FileAsset } from '../uploads/schemas/file-asset.schema.js';
 import type {
   CompanyListItemRecord,
   CompanyListItemResponse,
   CompanyListRecord,
+  CompanyLogoResponse,
+  CompanyDocumentResponse,
 } from './dto/company-response.dto.js';
 import type {
   CompanyDetailRecord,
@@ -88,5 +91,29 @@ export function toCompanyListItem(
           uploadedAt: company.logo.uploadedAt,
         }
       : null,
+  };
+}
+
+export function toCompanyLogoResponse(
+  file: FileAsset,
+  url: string,
+): CompanyLogoResponse {
+  return {
+    id: file.id,
+    url,
+    originalName: file.originalName,
+    contentType: file.contentType,
+    size: file.size,
+    uploadedAt: file.uploadedAt,
+  };
+}
+
+export function toCompanyDocumentResponse(file: FileAsset): CompanyDocumentResponse {
+  return {
+    id: file.id,
+    originalName: file.originalName,
+    contentType: file.contentType,
+    size: file.size,
+    uploadedAt: file.uploadedAt,
   };
 }

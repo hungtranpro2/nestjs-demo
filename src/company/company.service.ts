@@ -29,6 +29,8 @@ import {
   toCompanyDetail,
   toCompanyListItem,
   toPublicCompany,
+  toCompanyLogoResponse,
+  toCompanyDocumentResponse,
 } from './company.mapper.js';
 import { SortOrder } from '../common/dto/pagination-query.dto.js';
 import type { PaginatedResult } from '../common/interfaces/paginated-result.interface.js';
@@ -265,7 +267,7 @@ export class CompanyService {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         id: company._id.toString(),
 
-        logo,
+        logo: toCompanyLogoResponse(logo, this.storageService.getPublicUrl(logo.key)),
       };
     }
 
@@ -341,7 +343,7 @@ export class CompanyService {
 
     return {
       id: companyId,
-      logo: newLogo,
+      logo: toCompanyLogoResponse(newLogo, this.storageService.getPublicUrl(newLogo.key)),
     };
   }
 
@@ -391,7 +393,7 @@ export class CompanyService {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       id: company._id.toString(),
 
-      documents,
+      documents: documents.map(toCompanyDocumentResponse),
     };
   }
 
