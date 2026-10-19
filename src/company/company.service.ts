@@ -62,6 +62,7 @@ export class CompanyService {
 
   async findAll(
     query: GetCompaniesQueryDto,
+    user: IUser,
   ): Promise<PaginatedResult<CompanyListItemResponse>> {
     const {
       page,
@@ -74,7 +75,10 @@ export class CompanyService {
       createdTo,
     } = query;
     const skip = getPaginationOffset(page, limit);
-    const filter: QueryFilter<Company> = { isDeleted: { $ne: true } };
+    const filter: QueryFilter<Company> = {
+      isDeleted: { $ne: true },
+      'createdBy._id': new Types.ObjectId(user._id),
+    };
 
     if (status) {
       filter.status = status;

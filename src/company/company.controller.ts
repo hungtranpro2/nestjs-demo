@@ -51,8 +51,8 @@ export class CompanyController {
 
   @Get()
   @ResponseMessage('Companies retrieved successfully')
-  findAll(@Query() query: GetCompaniesQueryDto) {
-    return this.companyService.findAll(query);
+  findAll(@Query() query: GetCompaniesQueryDto, @User() user: IUser) {
+    return this.companyService.findAll(query, user);
   }
 
   @Get(':id')
