@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { Types } from 'mongoose';
 import { CompanyService } from './company.service.js';
 
