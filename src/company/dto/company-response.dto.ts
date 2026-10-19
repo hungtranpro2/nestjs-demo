@@ -1,6 +1,6 @@
 import type { Types } from 'mongoose';
 import type { Company } from '../schemas/company.schema.js';
-import { FileAsset } from '../../uploads/schemas/file-asset.schema.js';
+import type { FileAsset } from '../../uploads/schemas/file-asset.schema.js';
 
 export type CompanyListRecord = Pick<
   Company,
@@ -11,6 +11,7 @@ export type CompanyResponse = Omit<CompanyListRecord, '_id'> & { id: string };
 
 export type CompanyDetailRecord = CompanyListRecord & {
   logo?: FileAsset;
+  documents?: FileAsset[];
 };
 
 export type CompanyLogoResponse = {
@@ -22,9 +23,18 @@ export type CompanyLogoResponse = {
   uploadedAt: Date;
 };
 
+export type CompanyDocumentResponse = {
+  id: string;
+  originalName: string;
+  contentType: string;
+  size: number;
+  uploadedAt: Date;
+};
+
 export type CompanyDetailResponse = Omit<CompanyListRecord, '_id'> & {
   id: string;
   logo: CompanyLogoResponse | null;
+  documents: CompanyDocumentResponse[];
 };
 
 export type CompanyListItemRecord = CompanyListRecord & {

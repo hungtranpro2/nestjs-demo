@@ -49,6 +49,13 @@ export function toCompanyDetail(
           uploadedAt: company.logo.uploadedAt,
         }
       : null,
+    documents: company.documents?.map((document) => ({
+      id: document.id,
+      originalName: document.originalName,
+      contentType: document.contentType,
+      size: document.size,
+      uploadedAt: document.uploadedAt,
+    })) ?? [],
   };
 }
 

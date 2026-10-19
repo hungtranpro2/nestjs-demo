@@ -168,7 +168,7 @@ export class CompanyService {
   async update(id: string, updateCompanyDto: UpdateCompanyDto, user: IUser) {
     const updatedCompany = await this.companyModel
       .findOneAndUpdate(
-        { _id: id },
+        { _id: id, 'createdBy._id': new Types.ObjectId(user._id) },
         {
           ...updateCompanyDto,
           updatedBy: { _id: new Types.ObjectId(user._id), email: user.email },
@@ -194,7 +194,7 @@ export class CompanyService {
   async remove(id: string, user: IUser) {
     const deletedCompany = await this.companyModel
       .findOneAndUpdate(
-        { _id: id },
+        { _id: id, 'createdBy._id': new Types.ObjectId(user._id) },
         {
           isDeleted: true,
           deletedAt: new Date(),
@@ -251,7 +251,7 @@ export class CompanyService {
         .lean()
         .exec();
     } catch (error) {
-      await this.storageService.safeDelete(file.key);
+      await this.storageService.safeDeletePublic(file.key);
 
       throw error;
     }
@@ -269,7 +269,7 @@ export class CompanyService {
     // company không tồn tại HOẶC
     // company đã có logo.
 
-    await this.storageService.safeDelete(file.key);
+    await this.storageService.safeDeletePublic(file.key);
 
     const companyExists = await this.companyModel.exists({
       _id: companyId,
@@ -313,13 +313,13 @@ export class CompanyService {
         .lean()
         .exec();
     } catch (error) {
-      await this.storageService.safeDelete(file.key);
+      await this.storageService.safeDeletePublic(file.key);
 
       throw error;
     }
 
     if (!previousCompany) {
-      await this.storageService.safeDelete(file.key);
+      await this.storageService.safeDeletePublic(file.key);
 
       throw new NotFoundException({
         message: 'Company not found',
@@ -332,7 +332,7 @@ export class CompanyService {
     const previousLogoKey = previousCompany.logo?.key;
 
     if (previousLogoKey && previousLogoKey !== file.key) {
-      await this.storageService.safeDelete(previousLogoKey);
+      await this.storageService.safeDeletePublic(previousLogoKey);
     }
 
     return {
@@ -368,13 +368,13 @@ export class CompanyService {
         .lean()
         .exec();
     } catch (error) {
-      await this.storageService.safeDeleteMany(keys);
+      await this.storageService.safeDeletePrivateMany(keys);
 
       throw error;
     }
 
     if (!company) {
-      await this.storageService.safeDeleteMany(keys);
+      await this.storageService.safeDeletePrivateMany(keys);
 
       throw new NotFoundException({
         message: 'Company not found',
@@ -439,7 +439,7 @@ export class CompanyService {
 
     const logoKey = previousCompany.logo?.key;
 
-    await this.storageService.safeDelete(logoKey);
+    await this.storageService.safeDeletePublic(logoKey);
 
     return null;
   }
@@ -496,9 +496,40 @@ export class CompanyService {
     );
 
     if (document?.key) {
-      await this.storageService.safeDelete(document.key);
+      await this.storageService.safeDeletePrivate(document.key);
     }
 
     return null;
+  }
+  async getDocumentUrl(
+    companyId: string,
+    documentId: string,
+    userId: string,
+    disposition: 'inline' | 'attachment' = 'attachment',
+  ): Promise<{ url: string; expiresIn: number }> {
+    const company = await this.companyModel
+      .findOne({
+        _id: companyId,
+        'createdBy._id': new Types.ObjectId(userId),
+        'documents.id': documentId,
+      })
+      .select({ documents: 1 })
+      .lean()
+      .exec();
+
+    const document = company?.documents?.find((item) => item.id === documentId);
+    if (!document) {
+      throw new NotFoundException({
+        message: 'Company document not found',
+        code: 'COMPANY_DOCUMENT_NOT_FOUND',
+      });
+    }
+
+    const url = await this.storageService.getPrivateDocumentUrl(
+      document.key,
+      document.originalName,
+      disposition,
+    );
+    return { url, expiresIn: 300 };
   }
 }
