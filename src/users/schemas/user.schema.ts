@@ -27,7 +27,7 @@ export class User implements SoftDeletable {
   @Prop()
   address!: string;
 
-  @Prop()
+  @Prop({ default: 'USER' })
   role!: string;
 
   isDeleted!: boolean;
