@@ -15,7 +15,7 @@ import {
   SINGLE_UPLOAD_FIELD_NAME,
 } from './uploads.constants.js';
 import { StoredUpload, uploadToDisk } from '@nestjs/storage';
-import { R2_DISK } from '../storage/storage.constants.js';
+import { R2_PRIVATE_DISK } from '../storage/storage.constants.js';
 import { ResponseMessage } from '../common/decorators/response-message.decorator.js';
 import { generateUploadKey } from './utils/upload-key.util.js';
 import { toUploadedFileResponse } from './utils/upload-response.util.js';
@@ -27,7 +27,7 @@ export class UploadsController {
   @UseInterceptors(
     FileInterceptor(SINGLE_UPLOAD_FIELD_NAME, {
       storage: uploadToDisk({
-        disk: R2_DISK,
+        disk: R2_PRIVATE_DISK,
 
         contentTypes: [...ALLOWED_UPLOAD_CONTENT_TYPES],
 
@@ -60,7 +60,7 @@ export class UploadsController {
 
       {
         storage: uploadToDisk({
-          disk: R2_DISK,
+          disk: R2_PRIVATE_DISK,
 
           contentTypes: [...ALLOWED_UPLOAD_CONTENT_TYPES],
 

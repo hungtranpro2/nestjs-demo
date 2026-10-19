@@ -30,7 +30,7 @@ import { UploadsModule } from './uploads/uploads.module.js';
     AuthModule,
     CompanyModule,
     AppStorageModule,
-    UploadsModule,
+    ...(process.env.NODE_ENV === 'production' ? [] : [UploadsModule]),
   ],
   controllers: [AppController],
   providers: [
