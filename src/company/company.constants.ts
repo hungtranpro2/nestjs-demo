@@ -34,4 +34,5 @@ export const COMPANY_LIST_FIELDS = {
 
 export const COMPANY_DETAIL_FIELDS = {
   ...COMPANY_LIST_FIELDS,
+  documents: 1,
 } as const;
