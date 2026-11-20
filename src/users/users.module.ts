@@ -3,13 +3,14 @@ import { UsersService } from './users.service.js';
 import { UsersController } from './users.controller.js';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema.js';
+import { UsersAccessGuard } from './users-access.guard.js';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, UsersAccessGuard],
   exports: [UsersService], // Export UsersService to make it available for injection in other modules
 })
 export class UsersModule {}

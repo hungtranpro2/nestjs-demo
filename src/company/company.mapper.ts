@@ -1,7 +1,10 @@
+import type { FileAsset } from '../uploads/schemas/file-asset.schema.js';
 import type {
   CompanyListItemRecord,
   CompanyListItemResponse,
   CompanyListRecord,
+  CompanyLogoResponse,
+  CompanyDocumentResponse,
 } from './dto/company-response.dto.js';
 import type {
   CompanyDetailRecord,
@@ -49,6 +52,13 @@ export function toCompanyDetail(
           uploadedAt: company.logo.uploadedAt,
         }
       : null,
+    documents: company.documents?.map((document) => ({
+      id: document.id,
+      originalName: document.originalName,
+      contentType: document.contentType,
+      size: document.size,
+      uploadedAt: document.uploadedAt,
+    })) ?? [],
   };
 }
 
@@ -81,5 +91,29 @@ export function toCompanyListItem(
           uploadedAt: company.logo.uploadedAt,
         }
       : null,
+  };
+}
+
+export function toCompanyLogoResponse(
+  file: FileAsset,
+  url: string,
+): CompanyLogoResponse {
+  return {
+    id: file.id,
+    url,
+    originalName: file.originalName,
+    contentType: file.contentType,
+    size: file.size,
+    uploadedAt: file.uploadedAt,
+  };
+}
+
+export function toCompanyDocumentResponse(file: FileAsset): CompanyDocumentResponse {
+  return {
+    id: file.id,
+    originalName: file.originalName,
+    contentType: file.contentType,
+    size: file.size,
+    uploadedAt: file.uploadedAt,
   };
 }

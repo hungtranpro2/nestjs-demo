@@ -31,7 +31,7 @@ import {
   MAX_COMPANY_LOGO_SIZE,
 } from './uploads/company-upload.constants.js';
 import { StoredUpload, uploadToDisk } from '@nestjs/storage';
-import { R2_DISK } from '../storage/storage.constants.js';
+import { R2_PUBLIC_DISK, R2_PRIVATE_DISK } from '../storage/storage.constants.js';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import {
   generateCompanyDocumentKey,
@@ -51,17 +51,19 @@ export class CompanyController {
 
   @Get()
   @ResponseMessage('Companies retrieved successfully')
-  findAll(@Query() query: GetCompaniesQueryDto) {
-    return this.companyService.findAll(query);
+  findAll(@Query() query: GetCompaniesQueryDto, @User() user: IUser) {
+    return this.companyService.findAll(query, user);
   }
 
   @Get(':id')
+  @UseGuards(CompanyWriteGuard)
   @ResponseMessage('Company retrieved successfully')
   findOne(@Param('id', new MongoIdPipe('company')) id: string) {
     return this.companyService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(CompanyWriteGuard)
   @ResponseMessage('Company updated successfully')
   update(
     @Param('id', new MongoIdPipe('company')) id: string,
@@ -72,6 +74,7 @@ export class CompanyController {
   }
 
   @Delete(':id')
+  @UseGuards(CompanyWriteGuard)
   @ResponseMessage('Company deleted successfully')
   remove(
     @Param('id', new MongoIdPipe('company')) id: string,
@@ -86,7 +89,7 @@ export class CompanyController {
   @UseInterceptors(
     FileInterceptor(COMPANY_LOGO_FIELD, {
       storage: uploadToDisk({
-        disk: R2_DISK,
+        disk: R2_PUBLIC_DISK,
 
         contentTypes: [...COMPANY_LOGO_TYPES],
 
@@ -120,7 +123,7 @@ export class CompanyController {
   @UseInterceptors(
     FileInterceptor(COMPANY_LOGO_FIELD, {
       storage: uploadToDisk({
-        disk: R2_DISK,
+        disk: R2_PUBLIC_DISK,
 
         contentTypes: [...COMPANY_LOGO_TYPES],
 
@@ -159,7 +162,7 @@ export class CompanyController {
 
       {
         storage: uploadToDisk({
-          disk: R2_DISK,
+          disk: R2_PRIVATE_DISK,
 
           contentTypes: [...COMPANY_DOCUMENT_TYPES],
 
@@ -209,5 +212,26 @@ export class CompanyController {
     documentId: string,
   ) {
     return this.companyService.removeDocument(companyId, documentId);
+  }
+  @Get(':id/documents/:documentId/download-url')
+  @UseGuards(CompanyWriteGuard)
+  @ResponseMessage('Document download URL generated successfully')
+  downloadDocumentUrl(
+    @Param('id') companyId: string,
+    @Param('documentId') documentId: string,
+    @User() user: IUser,
+  ) {
+    return this.companyService.getDocumentUrl(companyId, documentId, user._id, 'attachment');
+  }
+
+  @Get(':id/documents/:documentId/preview-url')
+  @UseGuards(CompanyWriteGuard)
+  @ResponseMessage('Document preview URL generated successfully')
+  previewDocumentUrl(
+    @Param('id') companyId: string,
+    @Param('documentId') documentId: string,
+    @User() user: IUser,
+  ) {
+    return this.companyService.getDocumentUrl(companyId, documentId, user._id, 'inline');
   }
 }

@@ -9,13 +9,15 @@ import { StorageTestController } from './storage-test.controller.js';
   imports: [
     StorageModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        return createStorageOptions(configService);
-      },
+      useFactory: (configService: ConfigService) =>
+        createStorageOptions(configService),
       inject: [ConfigService],
     }),
   ],
-  controllers: [StorageTestController],
+  // The connectivity route must never be exposed in production.
+  controllers: process.env.NODE_ENV === 'development'
+    ? [StorageTestController]
+    : [],
   providers: [StorageService],
   exports: [StorageService],
 })

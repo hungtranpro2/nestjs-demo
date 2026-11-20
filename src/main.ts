@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { formatValidationErrors } from './common/utils/validation-error.util.js';
 
 async function bootstrap() {
@@ -20,7 +21,11 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  const config = app.get(ConfigService);
+  app.enableCors({
+    origin: config.get<string>('CLIENT_ORIGIN') ?? 'http://localhost:3000',
+    credentials: true,
+  });
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();

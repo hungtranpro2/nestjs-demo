@@ -1,1 +1,2 @@
-export const R2_DISK = 'r2';
+export const R2_PUBLIC_DISK = 'r2-public';
+export const R2_PRIVATE_DISK = 'r2-private';
